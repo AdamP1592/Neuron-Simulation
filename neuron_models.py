@@ -55,12 +55,19 @@ class hodgkin_huxley(neuron):
         self.n = self.alpha_n() * tau_n
         self.m = self.alpha_m() * tau_m
         self.h = self.alpha_h() * tau_h
+    def check_spike():
+        #spike should be probablistic, bell curve of voltages
+        #with the lowest and highest recorded values for
+        pass
     def __str__(self):
         return str(self.v)
         
     def add_synaptic_input(self, input_current):
         self.input_current += input_current
-        
+    
+    def membrane_derivative(self, alpha, beta, current_mem_potential):
+        return alpha * (1 - current_mem_potential) - (beta * current_mem_potential)
+
     def calculate_derivatives(self):
         #calculates each channel current
         self.i_k = self.gK * (self.n**4) * (self.Vk - self.v)
@@ -70,14 +77,26 @@ class hodgkin_huxley(neuron):
         #adds the sum total of all input currents to the current total voltage
         total_current = self.input_current + self.i_k + self.i_na + self.i_leak
         
+        #setup values for derivative calcs(reducing computation)
+        A_n = self.alpha_n()
+        B_n = self.beta_n()
+
+        A_m = self.alpha_n()
+        B_m = self.beta_n()
+
+        A_h = self.alpha_n()
+        B_h = self.beta_n()
+
         #calcs derivatives for all channels as well as the derivative of the voltage
-        dvdt = (total_current)/self.membrane_cap
-        dndt = self.alpha_n() * (1.0 - self.n) - self.beta_n() * self.n
-        dmdt = self.alpha_m() * (1.0 - self.m) - self.beta_m() * self.m
-        dhdt = self.alpha_h() * (1.0 - self.h) - self.beta_h() * self.h
+        #page 38 
+
+        dvdt = total_current/self.membrane_cap
+        dndt = self.membrane_derivative(A_n, B_n, self.n)
+        dmdt = self.membrane_derivative(A_m, B_m, self.m)
+        dhdt = self.membrane_derivative(A_h, B_h, self.h)
         
         #returns each derivative
-        return dvdt, dndt, dmdt, dhdt
+        return [dvdt, dndt, dmdt, dhdt]
     def update(self, input_current = 0):
         #updates the current states given an input current over the duration over the current timestep 
         
@@ -92,44 +111,76 @@ class hodgkin_huxley(neuron):
         self.h += dhdt * self.dt
 
         self.input_current = 0
-    def alpha_m(self):
-        v = self.v
-        return 0.1*(v + 40.0) / (1.0 - (math.exp(-(v + 45.0) / 10.0)))
-
-    def beta_m(self):
-        v = self.v
-        return 4.0 * (math.exp (-(v + 75.0)/18.0))
-
-    def alpha_h(self):
-        v = self.v
-        return 0.07 * (math.exp(-(v + 70.0) / 20.0))
-
-    def beta_h(self):
-        v = self.v
-        return 1.0/(1.0 + (math.exp(-(v + 35.0) / 10.0)))
 
     def alpha_n(self):
         v = self.v
-        return (0.01 * (v + 60.0)) / (1.0 - (math.exp(-(v + 60.0) / 10.0)))
+        return 0.01 * (10 - v) / (math.exp((10 - v) / 10) - 1)
 
     def beta_n(self):
         v = self.v
-        return 0.125 * (math.exp(-(v + 70.0) / 80.0))
+        return 0.125 * (math.exp(-v / 80.0))
+
+    def alpha_m(self):
+        v = self.v
+        return 0.1*(25-v) / ((math.exp((25 - v) / 10.0) - 1))
+
+    def beta_m(self):
+        v = self.v
+        return 4.0 * (math.exp(-v/18.0))
+
+    def alpha_h(self):
+        v = self.v
+        return 0.07 * (math.exp(- v / 20.0))
+
+    def beta_h(self):
+        v = self.v
+        return 1.0/(1.0 + (math.exp((35.0 - v) / 10.0)))
+
 
 class network_node():
     def __init__(self, neuron):
         self.neuron = neuron
-        
-if __name__ == '__main__':
-    dt = 0.0001
-    n1 = hodgkin_huxley()
-    var = 1
-    for i in range(20000):
-        v = 20
-        var += 1 
-        print("In volt:{}, Soma volt:{}".format(v, n1))
-        n1.update(v)
 
+
+def find_v_rest(n1, prev_states, num_prev_states):
+    #if the current state is drastically different from the 
+    #find the resting voltage v without any input current
+    pass
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    import time
+
+    t = 0
+    t_max = 100
+    dt = 0.01
+
+    n1 = hodgkin_huxley(0, dt)
+    var = 1
+    
+    x, y = [], []
+    y_shifted = []
+    m,n,h = [], [], []
+
+    fig, ax = plt.subplots()
+
+    while(t + dt < t_max):
+        t += dt
+        x.append(t) 
+        var += 1 
+        v = 0
+        n1.update(v)
+        m.append(n1.m)
+        n.append(n1.n)
+        h.append(n1.h)
+        y.append(n1.v)
+        y_shifted.append(n1.v - v)
+
+    ax.plot(x, y)
+    ax.plot(x, m)
+    ax.plot(x, n)
+    ax.plot(x, h)
+    plt.show()
 
     
     
