@@ -28,16 +28,25 @@ class charlie_neuron():
             skew = 0
             
 class hodgkin_huxley(neuron):
+    class gate():
+        alpha, beta, state = 0, 0, 0
 
+        def update(self, dt):
+            alpha_state = self.alpha * (1 - self.state)
+            beta_state = self.beta * self.state
+
+            self.state += dt * (alpha_state - beta_state)
+        def set_infinite_state(self):
+            self.state = self.alpha / (self.alpha + self.beta)
+
+    n_gate, m_gate, h_gate = gate(), gate(), gate()
     #implement gate class
-    def __init__(self, inital_voltage = 0, dt = 0.0001, resistance = 1/3, position = [0, 0 , 0]):
+    def __init__(self, inital_voltage = 0, dt = 0.0001):
         #used for storing past derivatives for the ion channels and overall voltages
         self.derivatives = []
 
         self.steady_voltage = 0
-        self.position = position
         self.resistance_L = 0.3
-
 
         self.v = inital_voltage
 
@@ -55,176 +64,95 @@ class hodgkin_huxley(neuron):
         self.eNa = 45
         self.eLeak = -59.387
         
-        
         #self.calc_resting_voltage()
-        
+        self.update_gates(self.v)
         self.gating_varibles_setup()
-    """
-    def calc_gating_vars(self, alphas, betas):
-        #input array is [alph_m, alpha_n, alpha_h], [beta_m,...]
-        gating_steady_states = []
-        for i in range(len(alphas)):
-            gating_steady_states.append(alphas[i] / (alphas[i] - betas[i]))
 
-        return gating_steady_states
+    def alpha_n(self, v):
+        return 0.01 * ((10 - v) / (math.exp((10 - v) / 10) - 1))
+
+    def beta_n(self, v):
+        return 0.125 * (math.exp(-v / 80.0))
+
+    def alpha_m(self, v):
+        return 0.1*((25 - v) / (math.exp((25 - v) / 10.0) - 1))
+
+    def beta_m(self, v):
+        return 4.0 * (math.exp(-v/18.0))
+
+    def alpha_h(self, v):
+        return 0.07 * (math.exp(- v / 20.0))
+
+    def beta_h(self, v):
+        return 1.0/(1.0 + (math.exp((30.0 - v) / 10.0)))
     
-    def calc_resting_voltage(self):
-        
-        A_n = self.alpha_n(0)
-        B_n = self.beta_n(0)
-
-        A_m = self.alpha_m(0)
-        B_m = self.beta_m(0)
-
-        A_h = self.alpha_h(0)
-        B_h = self.beta_h(0)
-
-
-        alphas = [A_n, A_m, A_h]
-        betas = [B_n, B_m, B_h]
-
-        steady_n, steady_m, steady_h = self.calc_gating_vars(alphas, betas)
-
-        #mess of calculations to find the steady state
-        numerator = (self.gK * self.eK * (steady_n**4)) +(self.gNa * self.eNa * (steady_m**3) * steady_h) + (self.gLeak * self.eLeak)
-        denominator = (self.gK * steady_n**4) + (self.gNa * (steady_m**3 * steady_h)) + self.gLeak
-        steady_voltage = -1 * self.membrane_cap * numerator/denominator
-        
-        self.steady_voltage = steady_voltage
-        return steady_voltage
-
-    def check_spike():
-        #spike should be probablistic, bell curve of voltages
-        #with the lowest and highest recorded values for
-        pass
-        """
-    
-    #will get swapped with results from expiremntal data
-    def __str__(self):
-        return str(self.v)
-
     def gating_varibles_setup(self):
-        tau_n = 1/(self.alpha_n() + self.beta_n())
-        tau_m = 1/(self.alpha_m() + self.beta_m())
-        tau_h = 1/(self.alpha_h() + self.beta_h())
-        
-        self.n = self.alpha_n() * tau_n
-        self.m = self.alpha_m() * tau_m
-        self.h = self.alpha_h() * tau_h
-        
-    def add_synaptic_input(self, input_current):
-        self.input_current += input_current
-    
-    
-    def membrane_derivative(self, alpha, beta, current_mem_potential):
-        return alpha * (1 - current_mem_potential) - (beta * current_mem_potential)
+        self.n_gate.set_infinite_state()
+        self.m_gate.set_infinite_state()
+        self.h_gate.set_infinite_state()
 
-    def calculate_derivatives(self):
-        #calculates each channel current
-        v = self.v
-        self.i_k = self.gK * (self.n**4) * (v - self.eK)
-        self.i_na = self.gNa * (self.m**3) * self.h * (v - self.eNa)
-        self.i_leak = self.gLeak * (v - self.eLeak)
+    def update_gate_voltages(self, dt):
+        #updates voltages
+        self.n_gate.update(dt)
+        self.m_gate.update(dt)
+        self.h_gate.update(dt)
+
+    def update_gates(self, v):
+        #updates gate constants
+        self.n_gate.alpha = self.alpha_n(v)
+        self.n_gate.beta = self.beta_n(v)
+
+        self.m_gate.alpha = self.alpha_m(v)
+        self.m_gate.beta = self.beta_m(v)
+
+        self.h_gate.alpha = self.alpha_h(v)
+        self.h_gate.beta = self.beta_h(v)
+
+
+    def update_v(self, input_current, dt):
+        #calculates totals for each ion channel
+        self.i_k = self.gK * (self.n_gate.state ** 4) * (self.v - self.eK)
+        self.i_na = self.gNa * (self.m_gate.state ** 3) * self.h_gate.state * (self.v - self.eNa)
+        self.i_leak = self.gLeak * (self.v - self.eLeak)
         
         #adds the sum total of all input currents to the current total voltage
-        total_current = self.input_current - (self.i_k + self.i_na + self.i_leak)
-        
-        #setup values for derivative calcs(reducing computation)
-        
-        A_n = self.alpha_n(0)
-        B_n = self.beta_n(0)
-
-        A_m = self.alpha_m(0)
-        B_m = self.beta_m(0)
-
-        A_h = self.alpha_h(0)
-        B_h = self.beta_h(0)
-
-        #calcs derivatives for all channels as well as the derivative of the voltage
-        #page 38 
+        total_current = input_current - self.i_k - self.i_na - self.i_leak
         dvdt = total_current/self.membrane_cap
-        dndt = self.membrane_derivative(A_n, B_n, self.n)
-        dmdt = self.membrane_derivative(A_m, B_m, self.m)
-        dhdt = self.membrane_derivative(A_h, B_h, self.h)
 
-        self.derivatives.append([dvdt, dndt, dmdt, dhdt])
-        
-        #returns each derivative
-        return [dvdt, dndt, dmdt, dhdt]
-    def update(self, input_current = 0):
+        self.derivatives.append(dvdt)
+        self.v += dvdt * dt
+
+    def iterate(self, input_current = False):
         #updates the current states given an input current over the duration over the current timestep 
         
         #needs to have a function for input current over time so as to get more accurate stimulation response
 
-        self.input_current = input_current
         #sum up all input currents from other neurons
-        
-        dvdt, dndt, dmdt, dhdt = self.calculate_derivatives() 
 
-        self.v += dvdt * self.dt
-        self.n += dndt * self.dt
-        self.m += dmdt * self.dt
-        self.h += dhdt * self.dt
+        #updates cell voltage
+        self.update_gates(self.v)
+        self.update_v(input_current, self.dt) 
+        self.update_gate_voltages(self.dt)
 
-
-    def alpha_n(self, v = False):
-        if not v: v = self.v
-        #0.2 * v - 25 /( 1- e^(-(v-25)/9))
-        print(v)
-        return 0.01 * (10 - v) / (math.exp((10 - v) / 10) - 1)
-
-    def beta_n(self, v = -1):
-        if not v: v = self.v
-        return 0.125 * (math.exp(-v / 80.0))
-
-    def alpha_m(self, v = -1):
-        if not v: v = self.v
-        return 0.1*(25-v) / ((math.exp((25 - v) / 10.0) - 1))
-
-    def beta_m(self, v = -1):
-        if not v: v = self.v
-        return 4.0 * (math.exp(-v/18.0))
-
-    def alpha_h(self, v = -1):
-        if not v: v = self.v
-        return 0.07 * (math.exp(- v / 20.0))
-
-    def beta_h(self, v = -1):
-        if not v: v = self.v
-        return 1.0/(1.0 + (math.exp((35.0 - v) / 10.0)))
-
-
-class network_node():
-    def __init__(self, neuron):
-        self.neuron = neuron
-
-
+        input_current = 0
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import time
     import math
-    #eNa = 55 gNa = 40
-    #eK = -77 gK = 35
-    #eL = -65 gL = 0.3
 
-    #gNa, eNa gK , eK, 
     t = 0
-    t_max = 100
+    t_max = 200
     dt = 0.01
-    gK = 36
-    gNa = 120
-    gLeak = 0.3
-    eK = -82
-    eNa = 45
-    eLeak = -59.387
-    Cm = 1
-    v_initial = -65
-    n_0 = 0.317
-    m_0 = 0.52
-    h_0 = 0.596
+    v_initial = 0
+    eNa, eK, eLeak = 115, -35, 10.6
+    gNa, gK, gLeak = 100, 5, 0.3
 
-    n1 = hodgkin_huxley(0, dt)
+    Cm = 1
+
+    resting_potential = -70
+    
+    n1 = hodgkin_huxley(v_initial, dt)
     
     n1.gK = gK
     n1.gNa = gNa
@@ -233,15 +161,14 @@ if __name__ == '__main__':
     n1.eNa = eNa
     n1.eLeak = eLeak
     n1.membrane_cap = Cm
-    n1.v = v_initial
-    n1.n = n_0
-    n1.m = m_0
-    n1.h = h_0
-    
+ 
     var = 1
     
     sin_current = lambda t :5 * math.sin(2 * math.pi * 0.1 * t)
-    current_times = [50, 70]
+    current = 20
+
+
+    current_times = [70, 130]
 
     x, y = [], []
     y_shifted = []
@@ -249,22 +176,27 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots(3, 1)
 
-    while(t + dt < t_max):
-        
-        x.append(t) 
+    while(t + dt <= t_max):
+
+         
         var += 1 
-        v = -1 * sin_current(t) *  ( t > current_times[0] and t < current_times[1])
+        v = current  * (t > current_times [0]  and t < current_times[1])
+        n1.iterate(v)
+        x.append(t)
+        m.append(n1.m_gate.state)
+        n.append(n1.n_gate.state)
+        h.append(n1.h_gate.state)
+        y.append(n1.v + resting_potential)
 
-        n1.update(v)
-        m.append(n1.m)
-        n.append(n1.n)
-        h.append(n1.h)
-        y.append(n1.v)
-
-        y_shifted.append(n1.v - v)
         t += dt
+    #print(voltages, "\n \n", n, "\n \n", m, "\n \n", h)
+    #print(n1.eK, n1.gK, n1.eNa, n1.gNa, n1.eLeak, n1.gLeak)
+    #print(voltages[-20:], n[-20:], m[-20:], h[-20])
 
+    ax[0].set_xlabel("time")
+    ax[0].set_ylabel("Membrane Potential")
     ax[0].plot(x, y)
+
     ax[1].plot(x, m)
     ax[1].plot(x, n)
     ax[1].plot(x, h)
