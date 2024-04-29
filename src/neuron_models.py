@@ -122,7 +122,7 @@ class hodgkin_huxley(neuron):
         self.derivatives.append(dvdt)
         self.v += dvdt * dt
 
-    def iterate(self, input_current = False):
+    def update(self, input_current = False):
         #updates the current states given an input current over the duration over the current timestep 
         
         #needs to have a function for input current over time so as to get more accurate stimulation response
@@ -135,73 +135,6 @@ class hodgkin_huxley(neuron):
         self.update_gate_voltages(self.dt)
 
         input_current = 0
-
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-    import time
-    import math
-
-    t = 0
-    t_max = 200
-    dt = 0.01
-    v_initial = 0
-    eNa, eK, eLeak = 115, -35, 10.6
-    gNa, gK, gLeak = 100, 5, 0.3
-
-    Cm = 1
-
-    resting_potential = -70
-    
-    n1 = hodgkin_huxley(v_initial, dt)
-    
-    n1.gK = gK
-    n1.gNa = gNa
-    n1.gLeak = gLeak
-    n1.eK = eK
-    n1.eNa = eNa
-    n1.eLeak = eLeak
-    n1.membrane_cap = Cm
- 
-    var = 1
-    
-    sin_current = lambda t :5 * math.sin(2 * math.pi * 0.1 * t)
-    current = 20
-
-
-    current_times = [70, 130]
-
-    x, y = [], []
-    y_shifted = []
-    m,n,h = [], [], []
-
-    fig, ax = plt.subplots(3, 1)
-
-    while(t + dt <= t_max):
-
-         
-        var += 1 
-        v = current  * (t > current_times [0]  and t < current_times[1])
-        n1.iterate(v)
-        x.append(t)
-        m.append(n1.m_gate.state)
-        n.append(n1.n_gate.state)
-        h.append(n1.h_gate.state)
-        y.append(n1.v + resting_potential)
-
-        t += dt
-    #print(voltages, "\n \n", n, "\n \n", m, "\n \n", h)
-    #print(n1.eK, n1.gK, n1.eNa, n1.gNa, n1.eLeak, n1.gLeak)
-    #print(voltages[-20:], n[-20:], m[-20:], h[-20])
-
-    ax[0].set_xlabel("time")
-    ax[0].set_ylabel("Membrane Potential")
-    ax[0].plot(x, y)
-
-    ax[1].plot(x, m)
-    ax[1].plot(x, n)
-    ax[1].plot(x, h)
-    ax[2].plot(x, n1.derivatives)
-    plt.show()
 
 
     
