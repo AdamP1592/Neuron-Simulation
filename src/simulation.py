@@ -69,11 +69,12 @@ if __name__ == '__main__':
     neuron_sim = simulation(dt)
 
     #generating a mutable datatype so it can be used in set_current
-    current_input_type = [0]
-    
+    input_types = {"Defaut":0, "Sin":1, "Square":2}
+    current_input_type = ["Default"]
     #helper function for radio buttons
     def set_current(input_type):
-        current_input_type[0] = (input_type == "Sin") 
+        #sets the current input type to the index of it's type
+        current_input_type[0] = input_type
         input_dict = {"Square": neuron_sim.square , "Sin": neuron_sim.sin, "None": neuron_sim.default_input}
         neuron_sim.input_current_func = input_dict[input_type]
     
@@ -88,7 +89,8 @@ if __name__ == '__main__':
             from pathlib import Path
             #savefig chooses to save two parent folders up, so set path directly
             p = Path("simulation.py")
-            fig.savefig(str(p.parent.absolute()) + "/Neuron-Simulation/demo/graph.png")
+            #current input type =  
+            fig.savefig("{}/demo/{}.png".format(str(p.parent.absolute()), current_input_type[0]))
             print("saved")
         if event.key=="escape":
             exit()
