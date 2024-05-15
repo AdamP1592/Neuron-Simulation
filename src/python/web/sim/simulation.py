@@ -11,7 +11,7 @@ class simulation():
     
     input_current = 0
     def __init__(self, dt):
-        from neuron_models import hodgkin_huxley
+        from .neuron_models import hodgkin_huxley
         self.model = hodgkin_huxley(0, dt)
 
         self.model.gK = self.gK
@@ -45,7 +45,7 @@ class simulation():
         self.h.append(self.model.h_gate.state)
 
         self.v.append(self.model.v + self.resting_potential)
-        self.t+=self.dt
+        self.t += self.dt
     
     def set_input_current(self, current_function):
         self.input_current_func = current_function
@@ -59,25 +59,50 @@ class simulation():
         import math
         amplitude = 25
         return (amplitude * math.sin(math.pi * t * 0.1) + amplitude)
-"""
-if __name__ == '__main__':
+
+
+    
+
+        
+
+"""if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from matplotlib.widgets import RadioButtons
-
+    from matplotlib.widgets import TextBox
     #sim setup
+
+    inputs = [input_current(), sin_current(), square_current()]
     dt = 0.01
     neuron_sim = simulation(dt)
 
     #generating a mutable datatype so it can be used in set_current
     input_types = {"Defaut":0, "Sin":1, "Square":2}
     current_input_type = ["Default"]
+        
+    #plot setup
+    plt.ion()
+    plt.show()
+    fig, ax_dict = plt.subplot_mosaic(
+                                AAD
+                               BBD
+                               CCF
+                                )
+    #break up each dict
+    ax0 = ax_dict["A"]
+    ax1 = ax_dict["B"]
+    ax2 = ax_dict["C"]
+    ax3 = ax_dict["D"]
+    ax4 = ax_dict["F"]
+    
+
+
     #helper function for radio buttons
     def set_current(input_type):
         #sets the current input type to the index of it's type
         current_input_type[0] = input_type
-        input_dict = {"Square": neuron_sim.square , "Sin": neuron_sim.sin, "None": neuron_sim.default_input}
+        input_dict = {"Square": inputs[0].get_current , "Sin": inputs[1].get_current, "None": input[2].get_current}
         neuron_sim.input_current_func = input_dict[input_type]
-    
+
     #escape case events    
     def on_press(event):
         import sys
@@ -96,28 +121,15 @@ if __name__ == '__main__':
             exit()
     def on_close(event):
         exit()
-        #plot setup
-    plt.ion()
-    plt.show()
-    fig, ax_dict = plt.subplot_mosaic(
-                                AAD
-                                BBD
-                                CCD
-                                )
-    #break up each dict
-    ax0 = ax_dict["A"]
-    ax1 = ax_dict["B"]
-    ax2 = ax_dict["C"]
-    ax3 = ax_dict["D"]
+        
     #manager setup
     manager = plt.get_current_fig_manager()
     manager.resize(*manager.window.maxsize())
-
     #some styling
+    
     fig.tight_layout()
     fig.set_figwidth(13)
     ax3.set_aspect(2.5)
-
     #escape cases
     fig.canvas.mpl_connect('key_press_event', on_press)
     fig.canvas.mpl_connect('close_event', on_close)
@@ -125,6 +137,10 @@ if __name__ == '__main__':
     #setup for radio buttons
     current_radio_buttons = RadioButtons(ax3, ["None", "Square", "Sin"])
     current_radio_buttons.on_clicked(set_current)
+
+    #if current_input_type changes, text_box needs to change
+
+
 
     #could not update y_data and still reload the graph, so this is what you get
     #no idea why
@@ -163,10 +179,9 @@ if __name__ == '__main__':
         ax2.plot(x, neuron_sim.input_currents[num_datapoints - past_range:])
         plt.draw()
 
-        plt.pause(0.005)
+        plt.pause(0.0001)
     
 
         i+=1
     plt.close()
-
-"""
+    """
