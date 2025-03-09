@@ -1,5 +1,11 @@
 class constant_current():
-    pass
+    def __init__(self, i):
+        self.i = i
+    def get_current(self, t):
+        return self.i
+    def __str__(self):
+        return "Constant Curren"
+    
 class input_current():
     def __init__(self, params = []):
         self.needed_params = []

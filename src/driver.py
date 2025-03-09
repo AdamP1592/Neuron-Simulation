@@ -10,6 +10,75 @@ def on_close(event):
         exit()
 
 #setup array of currents 
+def get_action_potential_threshold(sim):
+    from input_currents import constant_current
+    from input_currents import input_current
+    # The dictionary is defined but not used in this version,
+    # because we use arithmetic (exponentiation) for sign flipping.
+    add_sub_switch = {1: -1, -1: 1}
+    add_sub = -1
+
+    action_thresh_step = 10.0  # initial current adjustment step
+    
+    curr = constant_current(3)
+    no_curr = input_current()
+
+    # Start with the resting potential as the initial threshold guess.
+    thresh = sim.model.resting_potential
+
+    sim.set_input_current(curr.get_current)
+
+    # Run a preliminary simulation to determine max voltage (used for spike criterion)
+    for _ in range(int(15/sim.dt)):
+        sim.iterate()
+
+    max_v = max(sim.v)
+    possible_range = max_v - sim.model.resting_potential
+    deviation = 0.1
+    modifier = possible_range * deviation
+    modified_max = max_v - modifier  # voltage threshold to consider a spike
+
+    sim.clear()
+    print(sim.input_current_func(0))
+    previous_spike_thresh = sim.model.resting_potential
+    iteration_count = 2  # used to alternate adjustment direction
+
+    # Continue adjusting the threshold until the step size is sufficiently small
+    while action_thresh_step >= 0.001:
+        # Iterate 5 seconds with current injection at the current threshold level.
+        sim.set_input_current(curr.get_current)
+
+        for _ in range(int(5/sim.dt)):
+            sim.iterate()
+            # If the voltage exceeds the threshold, remove current by switching input.
+            if sim.model.v >= thresh:
+                sim.set_input_current(no_curr.get_current)
+
+        # Use the last 5 seconds of simulation values to determine max voltage.
+        vs = sim.v[-int(5/sim.dt):]
+        v_max = max(vs)
+
+        # If a spike occurred (voltage reached modified_max), store the threshold.
+        if v_max >= modified_max and iteration_count % 2 == 0:
+            previous_spike_thresh = thresh
+            # Flip the adjustment direction by incrementing iteration_count.
+            iteration_count += 1
+             # Halve the adjustment step for finer resolution.
+            action_thresh_step /= 2.0
+
+            
+        elif iteration_count % 2 == 1:
+            # No spike: also increment iteration_count to flip the adjustment direction.
+            iteration_count += 1
+            
+
+        # Update the threshold using the alternating sign:
+        
+        thresh += action_thresh_step * (add_sub ** iteration_count)
+        sim.clear()
+    return thresh
+    
+
 def setup_currents():
     #plan to swap out hard coded input currents with inspect.isclass
     import input_currents
@@ -24,7 +93,6 @@ def setup_currents():
         #setting up dict to keep track of all the current types, and the indexes they are at
         current_names.append(current_name)
 def set_params(val, label, pos):
-    print(val, label, pos)
     if "current" in label : 
         currents[pos].set_amplitude(val)
     else:
@@ -84,6 +152,9 @@ if __name__ == '__main__':
     #sim setup
     dt = 0.01
     neuron_sim = simulation(dt)
+
+    apt = get_action_potential_threshold(neuron_sim)
+    neuron_sim.model.action_potential_threshold = apt
     setup_currents()
     
     #plot setup
@@ -136,15 +207,6 @@ if __name__ == '__main__':
             print("saved")
         if event.key=="escape":
             exit()
-
-    
-
-    
-            
-        #for i in textbox_labels:
-            
-  
-
 
     #some styling
     fig.tight_layout()

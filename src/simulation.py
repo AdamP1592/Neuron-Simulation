@@ -3,24 +3,36 @@ class simulation():
     #gating constants
     eNa, eK, eLeak = 115, -35, 10.6
     gNa, gK, gLeak = 100, 5, 0.3
+    default_neural_params = {
+        "c": 1.0,  # membrane capacitance, in uF/cm^2
+        "gna": 120.0,   # maximum conducances, in mS/cm^2
+        "gk": 36.0,
+        'gleak': 0.3,
+        "ena": 50.0,    # reversal potentials, in mV
+        "ek": -77.0,
+        "eleak": -54.387,
+        "vrest":-65,
+        "vthresh": -55
+
+    }
+    
     #membrane cap
     Cm = 1
 
     #standard resting potential for neurons
     resting_potential = -70
     
-    input_current = 0
     def __init__(self, dt):
         from neuron_models import hodgkin_huxley
-        self.model = hodgkin_huxley(0, dt)
-
+        self.model = hodgkin_huxley(self.default_neural_params, dt)
+        """
         self.model.gK = self.gK
         self.model.gNa = self.gNa
         self.model.gLeak = self.gLeak
         self.model.eK = self.eK
         self.model.eNa = self.eNa
         self.model.eLeak = self.eLeak
-        self.model.membrane_cap = self.Cm
+        self.model.membrane_cap = self.Cm"""
 
         self.input_current = 0
         self.n, self.m, self.h, = [], [], []
@@ -44,8 +56,22 @@ class simulation():
         self.m.append(self.model.m_gate.state)
         self.h.append(self.model.h_gate.state)
 
-        self.v.append(self.model.v + self.resting_potential)
-        self.t+=self.dt
+        self.v.append(self.model.v)
+        self.t += self.dt
+
+    def clear(self):
+        #sets empty input current and iterates 10 seconds
+        
+        func = self.input_current_func
+        no_current = self.default_input
+
+        self.input_current_func = no_current
+
+        for i in range(int(10/self.dt)):
+            self.iterate()
+
+        self.input_current_func = func
+
     
     def set_input_current(self, current_function):
         self.input_current_func = current_function
