@@ -140,8 +140,6 @@ def set_current_type(current_type_str, slider_axes):
         
     recursive_slider_builder(textbox_labels, 0)
         
-        
-    print(sliders)
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from matplotlib.widgets import RadioButtons, Slider
