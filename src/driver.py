@@ -39,7 +39,6 @@ def get_action_potential_threshold(sim):
     modified_max = max_v - modifier  # voltage threshold to consider a spike
 
     sim.clear()
-    print(sim.input_current_func(0))
     previous_spike_thresh = sim.model.resting_potential
     iteration_count = 2  # used to alternate adjustment direction
 
@@ -155,6 +154,8 @@ if __name__ == '__main__':
 
     apt = get_action_potential_threshold(neuron_sim)
     neuron_sim.model.action_potential_threshold = apt
+    #clear the viewing range
+    neuron_sim.clear(6000)
     setup_currents()
     
     #plot setup
@@ -237,7 +238,7 @@ if __name__ == '__main__':
         #redraw after every 10 steps
         for j in range(50):
             neuron_sim.iterate()
-
+        
         #limit how many datapoints can be seen at once time
         num_datapoints = len(neuron_sim.times)
         past_range = 6000

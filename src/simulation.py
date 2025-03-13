@@ -59,15 +59,17 @@ class simulation():
         self.v.append(self.model.v)
         self.t += self.dt
 
-    def clear(self):
+    def clear(self, num_steps = None):
         #sets empty input current and iterates 10 seconds
-        
+        if num_steps == None:
+            num_steps = int(10/self.dt)
+
         func = self.input_current_func
         no_current = self.default_input
 
         self.input_current_func = no_current
 
-        for i in range(int(10/self.dt)):
+        for i in range(num_steps):
             self.iterate()
 
         self.input_current_func = func
